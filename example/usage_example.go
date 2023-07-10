@@ -1,32 +1,30 @@
-# lib-logging-golang
+package main
 
-A wrapper around (currently! can change!) the popular [go.uber.org/zap](https://pkg.go.dev/go.uber.org/zap) logging library and on top of that brings
- * configrability from yaml/json config (Python style)
- * hierarchical logging
- * bringing fmt.Printf() style .Info("log message with %v", value) logging signature - which will be only evaluated into a string if log event is not filtered out
- * builder style to add custom labels (zap.Fields) to particular log events
-
-# Get and install
-
-`go get github.com/keytiles/lib-logging-golang`
-
-# Usage
-
-Here is a simple example (you also find this as a running code in the [example](example) folder!)
-
-```go
 import (
-    ...
-	"github.com/keytiles/lib-logging-golang"
-	...
-)
+	"fmt"
+	"os"
+	"time"
 
+	ktlogging "github.com/keytiles/lib-logging-golang"
+)
 
 func main() {
 
 	// === init the logging
-	ktlogging.InitFromConfig("./log-config.yaml")
+
+	cfgErr := ktlogging.InitFromConfig("./log-config.yaml")
+	if cfgErr != nil {
+		panic(fmt.Sprintf("Oops! it looks configuring logging failed :-( error was: %v", cfgErr))
+	}
+
+	// === global labels
+
 	ktlogging.SetGlobalLabels(buildGlobalLabels())
+
+	// manipulating the GlobalLabels later is also possible
+	globalLabels := ktlogging.GetGlobalLabels()
+	globalLabels = append(globalLabels, ktlogging.FloatLabel("myVersion", 5.2))
+	ktlogging.SetGlobalLabels(globalLabels)
 
 	// === and now let's use the initialized logging!
 
@@ -57,7 +55,7 @@ func main() {
 	logger.WithLabels(labels).Info("one more message tagged with 'key=value'")
 }
 
-// builds and returns labels we want to add to all log events
+// builds and returns labels we want to add to all log events (this is just an example!!)
 func buildGlobalLabels() []ktlogging.Label {
 	var globalLabels = []ktlogging.Label{}
 	appName := os.Getenv("CONTAINER_NAME")
@@ -79,19 +77,3 @@ func buildGlobalLabels() []ktlogging.Label {
 
 	return globalLabels
 }
-```
-
-# Config file
-
-We are using the **Python style log config** as that is simple yet effective at the same time.
-
-Take a look into `/example/log-config.yaml` file!
-
-This basically consists of two sections:
- * **loggers** - is a map of Logger instances you want to create.  
-   So each Logger is named (by the key) and you can assign a specific log `level` (error|warning|info|debug) and list of `handlers` (see below) to where this Logger
-   will forward to each log events passed the level filtering
- * **handlers** - is a map of configured outputs.
-   Each Handler is a named (by the key) entity and can represent outputting to STDOUT (console), file or other. For Handlers you can control the encoding format can be 'json' or 'console'
-
-

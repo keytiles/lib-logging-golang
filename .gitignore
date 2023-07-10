@@ -19,3 +19,13 @@
 
 # Go workspace file
 go.work
+
+# IDEs
+.vscode/*
+*.code-workspace
+# Local History for Visual Studio Code
+.history/
+# User-specific stuff
+.idea/*
+
+*.log

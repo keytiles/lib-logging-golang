@@ -1,0 +1,36 @@
+loggers:
+  root:
+    level: info
+    handlers:
+      - stdout_json
+
+  # lets configure package level loggers
+  main:
+    level: debug
+    handlers:
+      - stdout_json
+      - file_plain
+  controller:
+    level: warning
+    handlers:
+      - stdout_json
+
+  # this logger is kinda pointless but possible - 'handlers' could left empty (temporarily?) so logs do not go anywhere
+  silent:
+    level: debug
+    handlers:
+
+# These are appenders config
+handlers:
+  # This handler logs to STDOUT in structured JSON format
+  stdout_json:
+    level: debug
+    encoding: json
+    outputPaths:
+      - stdout
+  # While this one is into a log file in Plain (console) format
+  file_plain:
+    level: debug
+    encoding: console
+    outputPaths:
+      - './my-plain-log-file.log'
