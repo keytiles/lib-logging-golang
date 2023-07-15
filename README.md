@@ -1,9 +1,10 @@
 # lib-logging-golang
 
 A wrapper around (currently! can change!) the popular [go.uber.org/zap](https://pkg.go.dev/go.uber.org/zap) logging library and on top of that brings
- * configrability from yaml/json config (Python style)
+ * configurability from yaml/json config (Python style)
  * hierarchical logging
  * bringing fmt.Printf() style .Info("log message with %v", value) logging signature - which will be only evaluated into a string if log event is not filtered out
+ * concept of "global labels" - set of key-value papirs which are always logged with every log event
  * builder style to add custom labels (zap.Fields) to particular log events
 
 # Get and install
@@ -25,8 +26,20 @@ import (
 func main() {
 
 	// === init the logging
-	ktlogging.InitFromConfig("./log-config.yaml")
+
+	cfgErr := ktlogging.InitFromConfig("./log-config.yaml")
+	if cfgErr != nil {
+		panic(fmt.Sprintf("Oops! it looks configuring logging failed :-( error was: %v", cfgErr))
+	}
+
+	// === global labels
+
 	ktlogging.SetGlobalLabels(buildGlobalLabels())
+
+	// manipulating the GlobalLabels later is also possible
+	globalLabels := ktlogging.GetGlobalLabels()
+	globalLabels = append(globalLabels, ktlogging.FloatLabel("myVersion", 5.2))
+	ktlogging.SetGlobalLabels(globalLabels)
 
 	// === and now let's use the initialized logging!
 
@@ -57,7 +70,7 @@ func main() {
 	logger.WithLabels(labels).Info("one more message tagged with 'key=value'")
 }
 
-// builds and returns labels we want to add to all log events
+// builds and returns labels we want to add to all log events (this is just an example!!)
 func buildGlobalLabels() []ktlogging.Label {
 	var globalLabels = []ktlogging.Label{}
 	appName := os.Getenv("CONTAINER_NAME")

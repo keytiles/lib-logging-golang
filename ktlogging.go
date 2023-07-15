@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"sync"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -64,9 +65,14 @@ func With(loggerName string) *Logger {
 	return GetLogger(loggerName)
 }
 
+// we need locks to avoid concurrent map operations
+var getLoggerLock = new(sync.RWMutex)
+
 // returns a Logger with the given name - if does not exist then a new instance is created with this name and registered
 // note: Loggers are hierarchical
 func GetLogger(loggerName string) *Logger {
+	getLoggerLock.Lock()
+
 	ctxLogger := loggers[loggerName]
 	if ctxLogger == nil {
 		// let's plit by '.' characters
@@ -88,6 +94,8 @@ func GetLogger(loggerName string) *Logger {
 		loggers[loggerName] = loggerCopy
 		ctxLogger = loggerCopy
 	}
+
+	getLoggerLock.Unlock()
 
 	return ctxLogger
 }
