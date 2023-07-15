@@ -24,6 +24,9 @@ const (
 
 var loggers map[string]*Logger
 
+// we need locks to avoid concurrent map operations
+var loggersLock = new(sync.RWMutex)
+
 // this is a set of key-value pairs which are added to every log events
 // You can use the getter/setter to change these values!
 var globalLabels []Label
@@ -60,19 +63,23 @@ func InitFromConfig(cfgPath string) error {
 	return nil
 }
 
+// returns a Logger with the given name - if does not exist then a new instance is created with this name and registered
+// note: Loggers are hierarchical
+func GetLogger(loggerName string) *Logger {
+	loggersLock.Lock()
+	ctxLogger := getLogger(loggerName)
+	loggersLock.Unlock()
+	return ctxLogger
+}
+
 // just a shortcut to the GetLogger method - for builder style readability stuff
 func With(loggerName string) *Logger {
 	return GetLogger(loggerName)
 }
 
-// we need locks to avoid concurrent map operations
-var getLoggerLock = new(sync.RWMutex)
-
 // returns a Logger with the given name - if does not exist then a new instance is created with this name and registered
 // note: Loggers are hierarchical
-func GetLogger(loggerName string) *Logger {
-	getLoggerLock.Lock()
-
+func getLogger(loggerName string) *Logger {
 	ctxLogger := loggers[loggerName]
 	if ctxLogger == nil {
 		// let's plit by '.' characters
@@ -80,7 +87,7 @@ func GetLogger(loggerName string) *Logger {
 		var parentLogger *Logger
 		if dotIdx > 0 {
 			// ok it seems to be a structured name... let's retry with logger by cutting down the last part
-			parentLogger = GetLogger(loggerName[0:dotIdx])
+			parentLogger = getLogger(loggerName[0:dotIdx])
 		} else {
 			// there are no dots - we return the "root" logger
 			parentLogger = getRootLogger()
@@ -94,9 +101,6 @@ func GetLogger(loggerName string) *Logger {
 		loggers[loggerName] = loggerCopy
 		ctxLogger = loggerCopy
 	}
-
-	getLoggerLock.Unlock()
-
 	return ctxLogger
 }
 
