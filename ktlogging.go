@@ -77,8 +77,7 @@ func With(loggerName string) *Logger {
 	return GetLogger(loggerName)
 }
 
-// returns a Logger with the given name - if does not exist then a new instance is created with this name and registered
-// note: Loggers are hierarchical
+// internal method to get a logger - NOT THREAD SAFE! Already assumes Lock is established so no race condition!
 func getLogger(loggerName string) *Logger {
 	ctxLogger := loggers[loggerName]
 	if ctxLogger == nil {
