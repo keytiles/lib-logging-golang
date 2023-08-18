@@ -3,6 +3,7 @@ package ktlogging
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"strings"
 	"sync"
 
@@ -22,7 +23,10 @@ const (
 	_ROOT_NAME string = "root"
 )
 
-var loggers map[string]*Logger
+var loggers = make(map[string]*Logger)
+
+// Default logger at info level, with json encoding writing to std_out
+var defaultLogger = createDefaultLogger()
 
 // we need locks to avoid concurrent map operations
 var loggersLock = new(sync.RWMutex)
@@ -61,6 +65,11 @@ func InitFromConfig(cfgPath string) error {
 	loggers = configuredLoggers
 
 	return nil
+}
+
+// GetDefaultLogger returns a default logger which is info level, with json encoding writing to std_out
+func GetDefaultLogger() *Logger {
+	return defaultLogger
 }
 
 // returns a Logger with the given name - if does not exist then a new instance is created with this name and registered
@@ -111,6 +120,21 @@ func getRootLogger() *Logger {
 		loggers[_ROOT_NAME] = rootLogger
 	}
 	return rootLogger
+}
+
+func createDefaultLogger() *Logger {
+	encoding := "json"
+	encoderConf, err := getZapEncoderConfig(encoding)
+	if err != nil {
+		log.Panic("could not get encoding for the default logger")
+	}
+	zapCfg := zap.Config{
+		Level:         zap.NewAtomicLevelAt(zapcore.InfoLevel),
+		Encoding:      encoding,
+		OutputPaths:   []string{"stdout"},
+		EncoderConfig: encoderConf}
+	zapLogger := zap.Must(zapCfg.Build())
+	return &Logger{name: "default", level: InfoLevel, handlers: map[string]*zap.Logger{"default": zapLogger}}
 }
 
 // returns a newly created instance of Zap EncoderConfig - depending on the encoding "json" or "console" etc

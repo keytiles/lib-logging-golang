@@ -10,6 +10,14 @@ This code is representing version `1.0.0`
 
 # Changes in releses
 
+## release 1.1.0
+
+New features:
+ * add default logger
+
+Bugfixes:
+ * fix panic if no logger is initialised
+
 ## release 1.0.0
 
 Bugfixes:
