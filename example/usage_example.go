@@ -10,7 +10,13 @@ import (
 
 func main() {
 
-	// === init the logging
+	// === init the logging with a config file
+
+	//     NOTE: this step is optional!
+	//     if you do not init then a default config will be applied automatically at the first time when you request a Logger (see below)
+	//     default config means:
+	//     - "root" logger on INFO level
+	//     - writes to STDOUT (console) in JSON format
 
 	cfgErr := ktlogging.InitFromConfig("./log-config.yaml")
 	if cfgErr != nil {

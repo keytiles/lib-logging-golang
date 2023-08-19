@@ -79,6 +79,14 @@ func With(loggerName string) *Logger {
 
 // internal method to get a logger - NOT THREAD SAFE! Already assumes Lock is established so no race condition!
 func getLogger(loggerName string) *Logger {
+	if loggers == nil {
+		// looks loggers were not configured - let's apply the default config
+		cfgErr := initLoggersWithDefaultConfig()
+		if cfgErr != nil {
+			panic(fmt.Sprintf("Oops! it looks configuring logging with default config failed :-( error was: %v", cfgErr))
+		}
+	}
+
 	ctxLogger := loggers[loggerName]
 	if ctxLogger == nil {
 		// let's plit by '.' characters
@@ -182,6 +190,38 @@ func parseLogLevelString(levelStr string) (LogLevel, error) {
 		return 0, fmt.Errorf("invalid log level '%v'", levelStr)
 	}
 	return level, nil
+}
+
+// Initializes the logging with default config
+// which means:
+// - we have a "root" logger at INFO level
+// - which writes to STDOUT in JSON format
+func initLoggersWithDefaultConfig() error {
+
+	defaultHhandlers := make(map[string]HandlerConfigModel)
+	defaultHhandlers["default_stdout_json"] = HandlerConfigModel{
+		Level:       "debug",
+		Encoding:    "json",
+		OutputPaths: []string{"stdout"},
+	}
+	defaultLoggers := make(map[string]LoggerConfigModel)
+	defaultLoggers["root"] = LoggerConfigModel{
+		Name:         "root",
+		Level:        "info",
+		HandlerNames: []string{"default_stdout_json"},
+	}
+	configModel := ConfigModel{
+		Loggers:  defaultLoggers,
+		Handlers: defaultHhandlers,
+	}
+
+	configuredLoggers, err := initLoggersFromConfig(configModel)
+	if err != nil {
+		return err
+	}
+	// all good - lets store this
+	loggers = configuredLoggers
+	return nil
 }
 
 // creates all Loggers and also Handlers (underlying Zap Loggers) - based on the config we have
