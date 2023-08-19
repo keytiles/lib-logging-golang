@@ -13,10 +13,10 @@ This code is representing version `1.0.0`
 ## release 1.1.0
 
 New features:
- * add default logger
 
 Bugfixes:
  * fix panic if no logger is initialised
+ * fix default logger to log to console
 
 ## release 1.0.0
 

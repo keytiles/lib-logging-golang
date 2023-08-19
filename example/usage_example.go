@@ -10,9 +10,6 @@ import (
 
 func main() {
 
-	// === default logger without any config. Json encoded, info level, written to std out.
-	ktlogging.GetDefaultLogger().Info("logging with a default logger")
-
 	// === init the logging
 
 	cfgErr := ktlogging.InitFromConfig("./log-config.yaml")

@@ -25,9 +25,6 @@ const (
 
 var loggers = make(map[string]*Logger)
 
-// Default logger at info level, with json encoding writing to std_out
-var defaultLogger = createDefaultLogger()
-
 // we need locks to avoid concurrent map operations
 var loggersLock = new(sync.RWMutex)
 
@@ -65,11 +62,6 @@ func InitFromConfig(cfgPath string) error {
 	loggers = configuredLoggers
 
 	return nil
-}
-
-// GetDefaultLogger returns a default logger which is info level, with json encoding writing to std_out
-func GetDefaultLogger() *Logger {
-	return defaultLogger
 }
 
 // returns a Logger with the given name - if does not exist then a new instance is created with this name and registered
@@ -115,9 +107,9 @@ func getLogger(loggerName string) *Logger {
 func getRootLogger() *Logger {
 	rootLogger, contains := loggers[_ROOT_NAME]
 	if !contains {
-		// OK let's create a silent "root" logger programmatically (this will not log anywhere)
-		rootLogger = &Logger{name: "root", level: InfoLevel, handlers: map[string]*zap.Logger{}}
-		loggers[_ROOT_NAME] = rootLogger
+		// OK let's create a silent "root" logger programmatically
+		loggers[_ROOT_NAME] = createDefaultLogger()
+		return loggers[_ROOT_NAME]
 	}
 	return rootLogger
 }
