@@ -7,7 +7,7 @@ We will mark these with Git Tags
 
 # Changes in releases
 
-## release 1.1.1
+## release 1.0.2
 
 Bugfixes:
  * .WithLabels() and .WithLabel() had bug - it did not add the provided label(s) - this was fixed
@@ -18,17 +18,17 @@ New features:
 Breaking changes:  
 -
 
+## release 1.0.1
 
-## release 1.1.0
+Bugfixes:
+ * Thread safety problem fix - protecting GetLogger() with mutex
 
-Bugfixes:  
--
-
-New features:
- * making use of ktlogging.InitFromConfig() optional by introducing concept of default config
+New features:  
+- 
 
 Breaking changes:  
 -
+
 
 
 ## release 1.0.0
