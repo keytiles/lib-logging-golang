@@ -3,7 +3,6 @@ package ktlogging
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"strings"
 	"sync"
 
@@ -23,7 +22,7 @@ const (
 	_ROOT_NAME string = "root"
 )
 
-var loggers = make(map[string]*Logger)
+var loggers map[string]*Logger
 
 // we need locks to avoid concurrent map operations
 var loggersLock = new(sync.RWMutex)
@@ -80,6 +79,14 @@ func With(loggerName string) *Logger {
 
 // internal method to get a logger - NOT THREAD SAFE! Already assumes Lock is established so no race condition!
 func getLogger(loggerName string) *Logger {
+	if loggers == nil {
+		// this means that loggers were not initialised. Create a root logger with default config.
+		var err error
+		loggers, err = initLoggersFromConfig(getDefaultLoggerConfig())
+		if err != nil {
+			panic(fmt.Sprintf("could not create a root logger with default config: %v", err.Error()))
+		}
+	}
 	ctxLogger := loggers[loggerName]
 	if ctxLogger == nil {
 		// let's plit by '.' characters
@@ -107,26 +114,30 @@ func getLogger(loggerName string) *Logger {
 func getRootLogger() *Logger {
 	rootLogger, contains := loggers[_ROOT_NAME]
 	if !contains {
-		// OK let's create a silent "root" logger programmatically
-		loggers[_ROOT_NAME] = createDefaultLogger()
-		return loggers[_ROOT_NAME]
+		// this should never happen, as a root logger should have been created if loggers were not initialised
+		panic("root logger not found! loggers initialisation likely did not happen correctly.")
 	}
 	return rootLogger
 }
 
-func createDefaultLogger() *Logger {
-	encoding := "json"
-	encoderConf, err := getZapEncoderConfig(encoding)
-	if err != nil {
-		log.Panic("could not get encoding for the default logger")
+func getDefaultLoggerConfig() ConfigModel {
+	handler := "stdout_json"
+	return ConfigModel{
+		Loggers: map[string]LoggerConfigModel{
+			"root": {
+				Name:         "root",
+				Level:        "info",
+				HandlerNames: []string{handler},
+			},
+		},
+		Handlers: map[string]HandlerConfigModel{
+			handler: {
+				Level:       "info",
+				Encoding:    "json",
+				OutputPaths: []string{"stdout"},
+			},
+		},
 	}
-	zapCfg := zap.Config{
-		Level:         zap.NewAtomicLevelAt(zapcore.InfoLevel),
-		Encoding:      encoding,
-		OutputPaths:   []string{"stdout"},
-		EncoderConfig: encoderConf}
-	zapLogger := zap.Must(zapCfg.Build())
-	return &Logger{name: "default", level: InfoLevel, handlers: map[string]*zap.Logger{"default": zapLogger}}
 }
 
 // returns a newly created instance of Zap EncoderConfig - depending on the encoding "json" or "console" etc
