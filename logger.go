@@ -95,7 +95,7 @@ func (l *Logger) log(level LogLevel, customLabels []Label, message string, messa
 // Please note: the labels will be just used in the upcoming LogEvent and after that forgotten!
 func (l *Logger) WithLabels(labels []Label) LogEvent {
 	le := newLogEvent(l)
-	le.WithLabels(labels)
+	le = le.WithLabels(labels)
 	return le
 }
 
@@ -103,7 +103,7 @@ func (l *Logger) WithLabels(labels []Label) LogEvent {
 // Please note: the label will be just used in the upcoming LogEvent and after that forgotten!
 func (l *Logger) WithLabel(label Label) LogEvent {
 	le := newLogEvent(l)
-	le.WithLabel(label)
+	le = le.WithLabel(label)
 	return le
 }
 
