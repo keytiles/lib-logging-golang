@@ -4,19 +4,40 @@ We are following [Semantic versioning](https://semver.org/) in this library
 
 We will mark these with Git Tags
 
-# Current version
 
-This code is representing version `1.0.0`
+# Changes in releases
 
-# Changes in releses
+## release 1.1.1
+
+Bugfixes:
+ * .WithLabels() and .WithLabel() had bug - it did not add the provided label(s) - this was fixed
+
+New features:  
+-
+
+Breaking changes:  
+-
+
+
+## release 1.1.0
+
+Bugfixes:  
+-
+
+New features:
+ * making use of ktlogging.InitFromConfig() optional by introducing concept of default config
+
+Breaking changes:  
+-
+
 
 ## release 1.0.0
 
-Bugfixes:
+Bugfixes:  
 -
 
 New features:
  * as this is the initial commit - everything ;-)
 
-Breaking changes:
+Breaking changes:  
 -
