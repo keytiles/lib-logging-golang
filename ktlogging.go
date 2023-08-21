@@ -125,7 +125,6 @@ func getDefaultLoggerConfig() ConfigModel {
 	return ConfigModel{
 		Loggers: map[string]LoggerConfigModel{
 			"root": {
-				Name:         "root",
 				Level:        "info",
 				HandlerNames: []string{handler},
 			},
