@@ -79,6 +79,14 @@ func With(loggerName string) *Logger {
 
 // internal method to get a logger - NOT THREAD SAFE! Already assumes Lock is established so no race condition!
 func getLogger(loggerName string) *Logger {
+	if loggers == nil {
+		// this means that loggers were not initialised. Create a root logger with default config.
+		var err error
+		loggers, err = initLoggersFromConfig(getDefaultLoggerConfig())
+		if err != nil {
+			panic(fmt.Sprintf("could not create a root logger with default config: %v", err.Error()))
+		}
+	}
 	ctxLogger := loggers[loggerName]
 	if ctxLogger == nil {
 		// let's plit by '.' characters
@@ -106,11 +114,29 @@ func getLogger(loggerName string) *Logger {
 func getRootLogger() *Logger {
 	rootLogger, contains := loggers[_ROOT_NAME]
 	if !contains {
-		// OK let's create a silent "root" logger programmatically (this will not log anywhere)
-		rootLogger = &Logger{name: "root", level: InfoLevel, handlers: map[string]*zap.Logger{}}
-		loggers[_ROOT_NAME] = rootLogger
+		// this should never happen, as a root logger should have been created if loggers were not initialised
+		panic("root logger not found! loggers initialisation likely did not happen correctly.")
 	}
 	return rootLogger
+}
+
+func getDefaultLoggerConfig() ConfigModel {
+	handler := "stdout_json"
+	return ConfigModel{
+		Loggers: map[string]LoggerConfigModel{
+			"root": {
+				Level:        "info",
+				HandlerNames: []string{handler},
+			},
+		},
+		Handlers: map[string]HandlerConfigModel{
+			handler: {
+				Level:       "info",
+				Encoding:    "json",
+				OutputPaths: []string{"stdout"},
+			},
+		},
+	}
 }
 
 // returns a newly created instance of Zap EncoderConfig - depending on the encoding "json" or "console" etc

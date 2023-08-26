@@ -4,8 +4,19 @@ We are following [Semantic versioning](https://semver.org/) in this library
 
 We will mark these with Git Tags
 
-
 # Changes in releases
+
+## release 1.0.3
+
+Bugfixes:
+ * fix panic if no logger is initialised
+ * fix default logger to log to console
+
+New features:  
+-
+
+Breaking changes:  
+-
 
 ## release 1.0.2
 
@@ -28,8 +39,6 @@ New features:
 
 Breaking changes:  
 -
-
-
 
 ## release 1.0.0
 
