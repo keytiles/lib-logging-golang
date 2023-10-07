@@ -39,7 +39,7 @@ func (le LogEvent) WithLabel(label Label) LogEvent {
 
 // making this event - actually makes the log itself
 func (le LogEvent) logWithLogger(level LogLevel, message string, messageParams ...any) {
-	if le.logger.isFilteredOut(level) {
+	if le.logger.isFilteredOut(level) || len(le.logger.handlers) == 0 {
 		// we skip this - as this log event will not happen for sure no point to make further efforts
 		return
 	}
@@ -57,18 +57,22 @@ func (le LogEvent) logWithLogger(level LogLevel, message string, messageParams .
 	le.logger.log(level, joinedLabels, message, messageParams...)
 }
 
+// Fires a log event on Debug level
 func (le LogEvent) Debug(message string, messageParams ...any) {
 	le.logWithLogger(DebugLevel, message, messageParams...)
 }
 
+// Fires a log event on Info level
 func (le LogEvent) Info(message string, messageParams ...any) {
 	le.logWithLogger(InfoLevel, message, messageParams...)
 }
 
+// Fires a log event on Warning level
 func (le LogEvent) Warn(message string, messageParams ...any) {
 	le.logWithLogger(WarningLevel, message, messageParams...)
 }
 
+// Fires a log event on Error level
 func (le LogEvent) Error(message string, messageParams ...any) {
 	le.logWithLogger(ErrorLevel, message, messageParams...)
 }

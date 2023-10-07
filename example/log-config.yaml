@@ -15,10 +15,16 @@ loggers:
     handlers:
       - stdout_json
 
-  # this logger is kinda pointless but possible - 'handlers' could left empty (temporarily?) so logs do not go anywhere
-  silent:
+  # this logger is kinda pointless but possible - 'handlers' could left empty (temporarily?) so logs do not go anywhere making the logger silent
+  no_handler:
     level: debug
     handlers:
+
+  # this logger is also silent but not because of not having 'handlers' but because of log level
+  silent_level:
+    level: none
+    handlers:
+      - stdout_json
 
 # These are appenders config
 handlers:
