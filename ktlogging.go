@@ -14,10 +14,11 @@ import (
 type LogLevel uint8
 
 const (
-	ErrorLevel   LogLevel = 0
-	WarningLevel LogLevel = 1
-	InfoLevel    LogLevel = 2
-	DebugLevel   LogLevel = 3
+	NoneLevel    LogLevel = 0
+	ErrorLevel   LogLevel = 1
+	WarningLevel LogLevel = 2
+	InfoLevel    LogLevel = 3
+	DebugLevel   LogLevel = 4
 
 	_ROOT_NAME string = "root"
 )
@@ -195,10 +196,12 @@ func getZapEncoderConfig(encoding string) (zapcore.EncoderConfig, error) {
 
 func parseLogLevelString(levelStr string) (LogLevel, error) {
 	var level LogLevel
-	switch levelStr {
+	switch strings.ToLower(levelStr) {
+	case "off", "none":
+		level = NoneLevel
 	case "error":
 		level = ErrorLevel
-	case "warning":
+	case "warning", "warn":
 		level = WarningLevel
 	case "info":
 		level = InfoLevel

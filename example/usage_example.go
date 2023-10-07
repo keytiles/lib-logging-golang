@@ -53,6 +53,49 @@ func main() {
 	logger.Info("with logger instance")
 	labels := []ktlogging.Label{ktlogging.StringLabel("key", "value")}
 	logger.WithLabels(labels).Info("one more message tagged with 'key=value'")
+
+	// check conditionally if a log event we intend to do on a certain level would be fired or not
+	// this way we can omit efforts taken into assembling a log event which later would be simply just dropped anyways
+	if logger.IsDebugEnabled() {
+		myDebugMsg := "for example"
+		myDebugMsg = myDebugMsg + " if we do stuff"
+		myDebugMsg = myDebugMsg + " to compile a Debug log message"
+		myDebugMsg = myDebugMsg + " this way just done if makes sense"
+		logger.Debug(myDebugMsg)
+	}
+	// the above methods also consider if the Logger has any configured output (handler) or not
+	// and return false if however the log level is good but currently the Logger does not output anywhere
+	// take a look into the 'log-config.yaml'! this Logger is configured on "debug" level but no handlers attached...
+	noOutputLogger := ktlogging.GetLogger("no_handler")
+	if noOutputLogger.IsInfoEnabled() {
+		// you will never get in here...
+	} else {
+		// but always here!
+		fmt.Println("logger 'no_handler' IsInfoEnabled() returned FALSE")
+	}
+	if noOutputLogger.IsErrorEnabled() {
+		// similarly, you will never get in here either
+	} else {
+		// but always here!
+		fmt.Println("logger 'no_handler' IsErrorEnabled() returned FALSE")
+	}
+	noOutputLogger.Info("this message will NOT appear")
+
+	// you can also check if a specific logger "is silent" currently either because of the log level or not having configured outputs...
+	if noOutputLogger.IsSilent() {
+		// you would now get in here as this logger does not have any output (handler)
+		fmt.Println("logger 'no_handler' IsSilent() returned TRUE")
+	}
+	silentLevelLogger := ktlogging.GetLogger("silent_level")
+	silentLevelLogger.Error("this message will NOT appear")
+	if silentLevelLogger.IsSilent() {
+		// you would now get in here too as this logger's log level is "none" at the moment
+		fmt.Println("logger 'silent_level' IsSilent() returned TRUE as well")
+	}
+	if !ktlogging.GetLogger("main").IsSilent() {
+		// you would now get in here as 'main' logger is obviously not "silent"
+		fmt.Println("logger 'main' IsSilent() returned FALSE - obviously...")
+	}
 }
 
 // builds and returns labels we want to add to all log events (this is just an example!!)
