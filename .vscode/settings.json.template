@@ -1,0 +1,37 @@
+// copy this into "settings.json" to apply code formatting - but before that
+// see: https://keytiles.atlassian.net/wiki/spaces/KEYTILES/pages/149815297/Creating+new+Go+microservice#Step-3---setup-code-formatting-(VSCode)
+//
+{
+  // format all files on save if a formatter is available
+  "editor.formatOnSave": true,
+  // I use "goimports" instead of "gofmt"
+  // because it does the same thing but also formats imports
+  "go.formatTool": "goimports",
+  // go-specific settings
+  "[go]": {
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": true
+    }
+  },
+  "[go.mod]": {
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": true
+    }
+  },
+
+  // This will run golines (https://github.com/segmentio/golines) automatically and format code
+  // To use run "go install github.com/segmentio/golines@latest"
+  "emeraldwalk.runonsave": {
+    "commands": [
+        {
+            "match": "\\.go$",
+            "cmd": "golines ${file} -w --max-len=160 --shorten-comments --no-reformat-tags"
+        }
+    ]
+  },
+  "editor.rulers": [
+    160
+  ],
+}

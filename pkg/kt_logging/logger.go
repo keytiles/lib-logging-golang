@@ -3,7 +3,7 @@
 // Loggers are named (created from the config json/yaml and returned by ktlogging.with(loggerName)) objects
 // with a specific level assigned to them - writing log events into a set of named and configured outputs
 
-package ktlogging
+package kt_logging
 
 import (
 	"fmt"
@@ -71,7 +71,8 @@ func (l *Logger) IsDebugEnabled() bool {
 	return l.level >= DebugLevel && len(l.handlers) > 0
 }
 
-// Returns TRUE if Logger would not output anything due to its current configuration. This is either because  it's log level is None or does not have any (output) handlers at the moment
+// Returns TRUE if Logger would not output anything due to its current configuration. This is either because  it's log level is None or does not have any
+// (output) handlers at the moment
 func (l *Logger) IsSilent() bool {
 	return l.level == NoneLevel || len(l.handlers) == 0
 }
@@ -124,7 +125,8 @@ func (l *Logger) WithLabels(labels []Label) LogEvent {
 	return le
 }
 
-// Decorates the upcoming LogEvent (when you invoke .info(), .error() etc method the LogEvent is fired) with the given label. If you have multiple labels to add consider using .WithLabels() method instead.
+// Decorates the upcoming LogEvent (when you invoke .info(), .error() etc method the LogEvent is fired) with the given label. If you have multiple labels to add
+// consider using .WithLabels() method instead.
 // Please note: the label will be just used in the upcoming LogEvent and after that forgotten!
 func (l *Logger) WithLabel(label Label) LogEvent {
 	le := newLogEvent(l)

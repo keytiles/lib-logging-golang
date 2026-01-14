@@ -21,7 +21,7 @@
 go.work
 
 # IDEs
-.vscode/*
+.vscode/*.json
 *.code-workspace
 # Local History for Visual Studio Code
 .history/
@@ -29,3 +29,4 @@ go.work
 .idea/*
 
 *.log
+*.jsonl

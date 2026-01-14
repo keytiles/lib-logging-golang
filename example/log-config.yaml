@@ -3,6 +3,7 @@ loggers:
     level: info
     handlers:
       - stdout_json
+      - rolling_json_file
 
   # lets configure package level loggers
   main:
@@ -10,10 +11,12 @@ loggers:
     handlers:
       - stdout_json
       - file_plain
+      - rolling_json_file
   controller:
     level: warning
     handlers:
       - stdout_json
+      - rolling_json_file
 
   # this logger is kinda pointless but possible - 'handlers' could left empty (temporarily?) so logs do not go anywhere making the logger silent
   no_handler:
@@ -40,3 +43,17 @@ handlers:
     encoding: console
     outputPaths:
       - './my-plain-log-file.log'
+  # This is logging into a file in JSON format which is rotated by size and kept only for 14 days max
+  # So amount of log occupied on disk is controllable
+  # IMPORTANT!! This will not work on Windows! See CHANGELOG. Only on inux based systems it will work
+  rolling_json_file:
+    level: debug
+    encoding: json
+    rollingFile:
+      file: './my-rolling-log-file.jsonl'
+      maxSizeMb: 1
+      maxAgeDays: 14
+      #maxBackups: 100
+      compress: true
+
+

@@ -1,13 +1,13 @@
-package ktlogging
+package kt_logging
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 	"sync"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"gopkg.in/natefinch/lumberjack.v2"
 	//"gopkg.in/yaml.v3"
 )
 
@@ -140,60 +140,6 @@ func getDefaultLoggerConfig() ConfigModel {
 	}
 }
 
-// returns a newly created instance of Zap EncoderConfig - depending on the encoding "json" or "console" etc
-// TODO This is too simple this way - this mechanism should be more sophisticated later but will do for now
-func getZapEncoderConfig(encoding string) (zapcore.EncoderConfig, error) {
-	var jsonSetup string
-	// we distinguish setup for console / json (default)
-	if encoding == "console" {
-		// jsonSetup = `{
-		//     "messageKey": "message",
-		//     "levelKey": "level",
-		//     "timeKey": "time",
-		//     "callerKey": "caller",
-		//     "levelEncoder": "lowercase",
-		//     "timeEncoder": "RFC3339Nano",
-		//     "callerEncoder": "short"
-		//   }`
-
-		// in JSON let's remove the caller to do not blow up indexed key-value pairs!
-		jsonSetup = `{
-            "messageKey": "message",
-            "levelKey": "level",
-            "timeKey": "time",
-            "levelEncoder": "lowercase",
-            "timeEncoder": "RFC3339Nano"
-          }`
-	} else {
-		// jsonSetup = `{
-		//     "messageKey": "message",
-		//     "levelKey": "level",
-		//     "timeKey": "time",
-		//     "callerKey": "caller",
-		//     "levelEncoder": "lowercase",
-		//     "timeEncoder": "RFC3339Nano",
-		//     "callerEncoder": "short"
-		//   }`
-
-		// in JSON let's remove the caller to do not blow up indexed key-value pairs!
-		jsonSetup = `{
-            "messageKey": "message",
-            "levelKey": "level",
-            "timeKey": "time",
-            "levelEncoder": "lowercase",
-            "timeEncoder": "RFC3339Nano"
-          }`
-
-	}
-
-	var zapEncoderConfig zapcore.EncoderConfig
-	if err := json.Unmarshal([]byte(jsonSetup), &zapEncoderConfig); err != nil {
-		return zapEncoderConfig, fmt.Errorf("internal error - failed to create ZapEncoderConfig, error was: %v", err)
-	}
-
-	return zapEncoderConfig, nil
-}
-
 func parseLogLevelString(levelStr string) (LogLevel, error) {
 	var level LogLevel
 	switch strings.ToLower(levelStr) {
@@ -220,6 +166,13 @@ func initLoggersFromConfig(config ConfigModel) (map[string]*Logger, error) {
 
 	// let's start with the handlers - as we will create a Zap logger for each entry there
 
+	zapEncoderConfig := zapcore.EncoderConfig{
+		MessageKey:  "message",
+		LevelKey:    "level",
+		TimeKey:     "time",
+		EncodeLevel: zapcore.LowercaseLevelEncoder,
+		EncodeTime:  zapcore.RFC3339NanoTimeEncoder,
+	}
 	zapLoggers := make(map[string]*zap.Logger)
 	for key, element := range config.Handlers {
 		// let's assemble a Zap config object!
@@ -227,12 +180,41 @@ func initLoggersFromConfig(config ConfigModel) (map[string]*Logger, error) {
 		if err != nil {
 			return loggers, fmt.Errorf("unkown log level '%v' in config at /handlers/%v", element.Level, key)
 		}
-		zapEncoderConfig, err := getZapEncoderConfig(element.Encoding)
-		if err != nil {
-			return loggers, fmt.Errorf("internal error - our zap.EncoderConfig generator somehow failed for (in config at) /handlers/%v with error: %v", key, err)
+
+		var zapLogger *zap.Logger
+		if element.RollingFile == nil {
+			zapCfg := zap.Config{
+				Level:             zapLevel,
+				Encoding:          element.Encoding,
+				OutputPaths:       element.OutputPaths,
+				EncoderConfig:     zapEncoderConfig,
+				DisableCaller:     true,
+				DisableStacktrace: true,
+			}
+			zapLogger = zap.Must(zapCfg.Build())
+		} else {
+			if len(element.OutputPaths) > 0 {
+				// this is not allowed!
+				return loggers, fmt.Errorf("if you use 'rollingFile' on a handler then you can not use 'outputPaths' as well in config at /handlers/%v", key)
+			}
+			log := &lumberjack.Logger{
+				Filename:   element.RollingFile.File,       // Location of the log file
+				MaxSize:    element.RollingFile.MaxSizeMb,  // Maximum file size (in MB)
+				MaxBackups: element.RollingFile.MaxBackups, // Maximum number of old files to retain
+				MaxAge:     element.RollingFile.MaxAgeDays, // Maximum number of days to retain old files
+				Compress:   element.RollingFile.Compress,   // Whether to compress/archive old files
+				LocalTime:  true,                           // Use local time for timestamps
+			}
+			writer := zapcore.AddSync(log)
+			var encoder zapcore.Encoder
+			if element.Encoding == "console" {
+				encoder = zapcore.NewConsoleEncoder(zapEncoderConfig)
+			} else {
+				encoder = zapcore.NewJSONEncoder(zapEncoderConfig)
+			}
+			core := zapcore.NewCore(encoder, writer, zapLevel)
+			zapLogger = zap.New(core)
 		}
-		zapCfg := zap.Config{Level: zapLevel, Encoding: element.Encoding, OutputPaths: element.OutputPaths, EncoderConfig: zapEncoderConfig}
-		zapLogger := zap.Must(zapCfg.Build())
 		zapLoggers[key] = zapLogger
 	}
 

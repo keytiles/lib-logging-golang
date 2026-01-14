@@ -1,4 +1,4 @@
-package ktlogging
+package kt_logging
 
 /*
 LogEvent structs just used internally - when user is adding extra labels to the log event.

@@ -1,4 +1,4 @@
-package ktlogging
+package kt_logging
 
 import "go.uber.org/zap"
 
@@ -39,7 +39,8 @@ const (
 )
 
 // A Label can carry a certain key-value pair. Regarding the value the atomic JSON data types are supported: string, bool, numeric values.
-// Complex structures like array/object are not as we do not want to bring this complexity as a key-value into central persistence layers (like Elastic Search or similar).
+// Complex structures like array/object are not as we do not want to bring this complexity as a key-value into central persistence layers (like Elastic Search
+// or similar).
 // You can marshal complex structures into a JSON string before logging and just log the string representation
 type Label struct {
 	key         string
