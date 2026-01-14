@@ -6,6 +6,12 @@ We will mark these with Git Tags
 
 # Changes in releases
 
+## release 2.1.0
+
+New features:
+
+- From a `Label` now provides `.GetKey()`, `.GetType()` and `.GetXXXValue()` methods so you can read out its content if really needed ( not a typical thing...)
+
 ## release 2.0.0
 
 Breaking changes:

@@ -51,6 +51,25 @@ type Label struct {
 	boolValue   bool
 }
 
+func (l Label) GetKey() string {
+	return l.key
+}
+func (l Label) GetType() LabelType {
+	return l._type
+}
+func (l Label) GetStringValue() string {
+	return l.stringValue
+}
+func (l Label) GetBoolValue() bool {
+	return l.boolValue
+}
+func (l Label) GetIntValue() int64 {
+	return l.intValue
+}
+func (l Label) GetFloatValue() float64 {
+	return l.floatValue
+}
+
 // converts a Label into zap.Field struct
 func (f Label) toZapField() zap.Field {
 	switch f._type {
