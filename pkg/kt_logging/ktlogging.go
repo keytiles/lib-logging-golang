@@ -2,13 +2,13 @@ package kt_logging
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"gopkg.in/natefinch/lumberjack.v2"
-	//"gopkg.in/yaml.v3"
 )
 
 type LogLevel uint8
@@ -20,7 +20,8 @@ const (
 	InfoLevel    LogLevel = 3
 	DebugLevel   LogLevel = 4
 
-	_ROOT_NAME string = "root"
+	_ROOT_NAME            string = "root"
+	_DEFAULT_HANDLER_NAME string = "stdout_json"
 )
 
 var loggers map[string]*Logger
@@ -58,8 +59,10 @@ func InitFromConfig(cfgPath string) error {
 		return err
 	}
 
-	// all good - lets store this
+	// swap registry under lock so concurrent GetLogger cannot race
+	loggersLock.Lock()
 	loggers = configuredLoggers
+	loggersLock.Unlock()
 
 	return nil
 }
@@ -78,19 +81,23 @@ func With(loggerName string) *Logger {
 	return GetLogger(loggerName)
 }
 
-// internal method to get a logger - NOT THREAD SAFE! Already assumes Lock is established so no race condition!
+// Resolves or creates a named logger. NOT THREAD SAFE — caller must hold loggersLock.
+// Never panics on the lazy-default path.
 func getLogger(loggerName string) *Logger {
 	if loggers == nil {
-		// this means that loggers were not initialised. Create a root logger with default config.
-		var err error
-		loggers, err = initLoggersFromConfig(getDefaultLoggerConfig())
-		if err != nil {
-			panic(fmt.Sprintf("could not create a root logger with default config: %v", err.Error()))
+		// Prefer normal default config; on failure install a hard-coded stdout JSON root (no panic).
+		configured, err := initLoggersFromConfig(getDefaultLoggerConfig())
+		if err == nil {
+			loggers = configured
+		} else {
+			loggers = map[string]*Logger{
+				_ROOT_NAME: newHardFallbackRootLogger(),
+			}
 		}
 	}
 	ctxLogger := loggers[loggerName]
 	if ctxLogger == nil {
-		// let's plit by '.' characters
+		// let's split by '.' characters
 		dotIdx := strings.LastIndex(loggerName, ".")
 		var parentLogger *Logger
 		if dotIdx > 0 {
@@ -112,20 +119,51 @@ func getLogger(loggerName string) *Logger {
 	return ctxLogger
 }
 
+// Returns the root logger. Never panics: if root is missing, installs a safe fallback.
+// Caller must hold loggersLock.
 func getRootLogger() *Logger {
-	rootLogger, contains := loggers[_ROOT_NAME]
-	if !contains {
-		// this should never happen, as a root logger should have been created if loggers were not initialised
-		panic("root logger not found! loggers initialisation likely did not happen correctly.")
+	if rootLogger, contains := loggers[_ROOT_NAME]; contains {
+		return rootLogger
 	}
-	return rootLogger
+	if loggers == nil {
+		loggers = make(map[string]*Logger)
+	}
+	root := newHardFallbackRootLogger()
+	loggers[_ROOT_NAME] = root
+	return root
 }
 
+// Builds a minimal root logger that writes JSON to stdout using only zapcore primitives (no zap.Must).
+func newHardFallbackRootLogger() *Logger {
+	encoderConfig := defaultZapEncoderConfig()
+	core := zapcore.NewCore(
+		zapcore.NewJSONEncoder(encoderConfig),
+		zapcore.AddSync(os.Stdout),
+		zap.InfoLevel,
+	)
+	zapLogger := zap.New(core)
+	return newLogger(_ROOT_NAME, InfoLevel, map[string]*zap.Logger{
+		_DEFAULT_HANDLER_NAME: zapLogger,
+	})
+}
+
+// Shared zap encoder settings used by config-built handlers and the hard fallback root.
+func defaultZapEncoderConfig() zapcore.EncoderConfig {
+	return zapcore.EncoderConfig{
+		MessageKey:  "message",
+		LevelKey:    "level",
+		TimeKey:     "time",
+		EncodeLevel: zapcore.LowercaseLevelEncoder,
+		EncodeTime:  zapcore.RFC3339NanoTimeEncoder,
+	}
+}
+
+// Returns the in-memory default config (root → JSON stdout at info) used when InitFromConfig was never called.
 func getDefaultLoggerConfig() ConfigModel {
-	handler := "stdout_json"
+	handler := _DEFAULT_HANDLER_NAME
 	return ConfigModel{
 		Loggers: map[string]LoggerConfigModel{
-			"root": {
+			_ROOT_NAME: {
 				Level:        "info",
 				HandlerNames: []string{handler},
 			},
@@ -140,6 +178,7 @@ func getDefaultLoggerConfig() ConfigModel {
 	}
 }
 
+// Maps a config level string to LogLevel (case-insensitive).
 func parseLogLevelString(levelStr string) (LogLevel, error) {
 	var level LogLevel
 	switch strings.ToLower(levelStr) {
@@ -159,43 +198,53 @@ func parseLogLevelString(levelStr string) (LogLevel, error) {
 	return level, nil
 }
 
-// creates all Loggers and also Handlers (underlying Zap Loggers) - based on the config we have
+// Creates all Loggers and Handlers (underlying Zap Loggers) from the config model.
 func initLoggersFromConfig(config ConfigModel) (map[string]*Logger, error) {
 
-	loggers := make(map[string]*Logger)
+	result := make(map[string]*Logger)
 
 	// let's start with the handlers - as we will create a Zap logger for each entry there
 
-	zapEncoderConfig := zapcore.EncoderConfig{
-		MessageKey:  "message",
-		LevelKey:    "level",
-		TimeKey:     "time",
-		EncodeLevel: zapcore.LowercaseLevelEncoder,
-		EncodeTime:  zapcore.RFC3339NanoTimeEncoder,
-	}
+	zapEncoderConfig := defaultZapEncoderConfig()
 	zapLoggers := make(map[string]*zap.Logger)
 	for key, element := range config.Handlers {
+		// validate encoding (json | console); reject typos instead of silently defaulting
+		var encoding string
+		switch strings.ToLower(element.Encoding) {
+		case "json":
+			encoding = "json"
+		case "console":
+			encoding = "console"
+		default:
+			return result, fmt.Errorf("invalid encoding '%v' in config at /handlers/%v (supported: json, console)", element.Encoding, key)
+		}
+
 		// let's assemble a Zap config object!
 		zapLevel, err := zap.ParseAtomicLevel(element.Level)
 		if err != nil {
-			return loggers, fmt.Errorf("unkown log level '%v' in config at /handlers/%v", element.Level, key)
+			return result, fmt.Errorf("unkown log level '%v' in config at /handlers/%v", element.Level, key)
 		}
 
 		var zapLogger *zap.Logger
 		if element.RollingFile == nil {
 			zapCfg := zap.Config{
 				Level:             zapLevel,
-				Encoding:          element.Encoding,
+				Encoding:          encoding,
 				OutputPaths:       element.OutputPaths,
 				EncoderConfig:     zapEncoderConfig,
 				DisableCaller:     true,
 				DisableStacktrace: true,
 			}
-			zapLogger = zap.Must(zapCfg.Build())
+			// return build errors instead of panicking (zap.Must)
+			built, buildErr := zapCfg.Build()
+			if buildErr != nil {
+				return result, fmt.Errorf("failed to build handler '%v': %v", key, buildErr)
+			}
+			zapLogger = built
 		} else {
 			if len(element.OutputPaths) > 0 {
 				// this is not allowed!
-				return loggers, fmt.Errorf("if you use 'rollingFile' on a handler then you can not use 'outputPaths' as well in config at /handlers/%v", key)
+				return result, fmt.Errorf("if you use 'rollingFile' on a handler then you can not use 'outputPaths' as well in config at /handlers/%v", key)
 			}
 			log := &lumberjack.Logger{
 				Filename:   element.RollingFile.File,       // Location of the log file
@@ -207,7 +256,7 @@ func initLoggersFromConfig(config ConfigModel) (map[string]*Logger, error) {
 			}
 			writer := zapcore.AddSync(log)
 			var encoder zapcore.Encoder
-			if element.Encoding == "console" {
+			if encoding == "console" {
 				encoder = zapcore.NewConsoleEncoder(zapEncoderConfig)
 			} else {
 				encoder = zapcore.NewJSONEncoder(zapEncoderConfig)
@@ -224,22 +273,22 @@ func initLoggersFromConfig(config ConfigModel) (map[string]*Logger, error) {
 		for _, handlerName := range element.HandlerNames {
 			handler, contains := zapLoggers[handlerName]
 			if !contains {
-				return loggers, fmt.Errorf("problem in config /loggers/%v: invalid handler reference, handler '%v' does not exist", key, handlerName)
+				return result, fmt.Errorf("problem in config /loggers/%v: invalid handler reference, handler '%v' does not exist", key, handlerName)
 			}
 			handlers[handlerName] = handler
 		}
 		level, err := parseLogLevelString(element.Level)
 		if err != nil {
-			return loggers, fmt.Errorf("problem in config /loggers/%v: %v", key, err)
+			return result, fmt.Errorf("problem in config /loggers/%v: %v", key, err)
 		}
 		logger := newLogger(key, level, handlers)
-		loggers[key] = logger
+		result[key] = logger
 	}
 
-	if _, contains := loggers["root"]; !contains {
+	if _, contains := result[_ROOT_NAME]; !contains {
 		// "root" logger definition is mandatory
-		return loggers, fmt.Errorf("log config file must define \"root\" logger")
+		return result, fmt.Errorf("log config file must define \"root\" logger")
 	}
 
-	return loggers, nil
+	return result, nil
 }

@@ -12,6 +12,9 @@ Fixes:
 - Applying new Keytiles lib standards
   - Introducing constant `LIB_NAME`
   - Based on the above introducing constants `PACKAGE_NAME` in all packages
+- Runtime panic safety for `GetLogger` / `With` (lazy default init and missing-root fallback no longer panic)
+- `InitFromConfig` now swaps the logger registry under lock (avoids race with concurrent getters)
+- Handler construction returns errors instead of panicking via `zap.Must`; invalid handler `encoding` is rejected; config file read errors are returned
 
 Upgrades:
 - Golang 1.26.0 is used from now
