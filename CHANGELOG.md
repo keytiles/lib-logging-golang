@@ -6,6 +6,16 @@ We will mark these with Git Tags
 
 # Changes in releases
 
+## release 2.1.1
+
+Fixes:
+- Applying new Keytiles lib standards
+  - Introducing constant `LIB_NAME`
+  - Based on the above introducing constants `PACKAGE_NAME` in all packages
+
+Upgrades:
+- Golang 1.26.0 is used from now
+
 ## release 2.1.0
 
 New features:

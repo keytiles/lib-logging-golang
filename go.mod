@@ -1,9 +1,9 @@
 module github.com/keytiles/lib-logging-golang/v2
 
-go 1.23.4
+go 1.26.0
 
 require (
-	go.uber.org/zap v1.27.1
+	go.uber.org/zap v1.28.0
 	gopkg.in/yaml.v2 v2.4.0
 )
 
