@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -29,21 +30,45 @@ var loggers map[string]*Logger
 // we need locks to avoid concurrent map operations
 var loggersLock = new(sync.RWMutex)
 
-// this is a set of key-value pairs which are added to every log events
-// You can use the getter/setter to change these values!
-var globalLabels []Label
-var zapGlobalLabels []zap.Field
-
-// returns the current GlobalLabels - key-value pairs attached to all log events
-func GetGlobalLabels() []Label {
-	return globalLabels
+// Snapshot of labels attached to every log event. Stored via atomic.Value for lock-free reads on the log path.
+type globalLabelsSnapshot struct {
+	labels    []Label
+	zapFields []zap.Field
 }
 
-// you can change the GlobalLabels with this - the key-value pairs attached to all log events
+// Holds *globalLabelsSnapshot (or nil before the first SetGlobalLabels).
+var globalLabelsState atomic.Value
+
+// Returns a copy of the current global labels (snapshot). Mutating the result does not affect logging;
+// call SetGlobalLabels to publish a new set.
+func GetGlobalLabels() []Label {
+	snap := loadGlobalLabelsSnapshot()
+	if snap == nil || len(snap.labels) == 0 {
+		return nil
+	}
+	return append([]Label(nil), snap.labels...)
+}
+
+// Replaces the global labels attached to every log event. The provided slice is copied;
+// later mutation of the caller's slice does not affect logging.
 func SetGlobalLabels(labels []Label) {
-	globalLabels = labels
-	// let's convert immediately to Zap fields
-	zapGlobalLabels = toZapFieldArray(labels)
+	var copied []Label
+	if len(labels) > 0 {
+		copied = append([]Label(nil), labels...)
+	}
+	globalLabelsState.Store(&globalLabelsSnapshot{
+		labels:    copied,
+		zapFields: toZapFieldArray(copied),
+	})
+}
+
+// Loads the current global-labels snapshot, or nil if none was set yet.
+func loadGlobalLabelsSnapshot() *globalLabelsSnapshot {
+	v := globalLabelsState.Load()
+	if v == nil {
+		return nil
+	}
+	return v.(*globalLabelsSnapshot)
 }
 
 // Initializing the logging from the .yaml or .json config file available on the given path

@@ -15,6 +15,8 @@ Fixes:
 - Runtime panic safety for `GetLogger` / `With` (lazy default init and missing-root fallback no longer panic)
 - `InitFromConfig` now swaps the logger registry under lock (avoids race with concurrent getters)
 - Handler construction returns errors instead of panicking via `zap.Must`; invalid handler `encoding` is rejected; config file read errors are returned
+- Global labels are thread-safe (`atomic.Value`); `GetGlobalLabels` / `SetGlobalLabels` copy on get/set
+- `GetHandlers` returns a shallow copy of the handlers map
 
 Upgrades:
 - Golang 1.26.0 is used from now

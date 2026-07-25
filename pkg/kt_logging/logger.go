@@ -7,6 +7,7 @@ package kt_logging
 
 import (
 	"fmt"
+	"maps"
 
 	"go.uber.org/zap"
 )
@@ -42,9 +43,11 @@ func (l *Logger) GetLevel() LogLevel {
 	return l.level
 }
 
-// returns the attached Handlers
+// Returns a shallow copy of the attached handlers map so callers cannot mutate the logger's internal map.
 func (l *Logger) GetHandlers() map[string]*zap.Logger {
-	return l.handlers
+	handlersCopy := make(map[string]*zap.Logger, len(l.handlers))
+	maps.Copy(handlersCopy, l.handlers)
+	return handlersCopy
 }
 
 func (l *Logger) isFilteredOut(level LogLevel) bool {
@@ -92,9 +95,9 @@ func (l *Logger) log(level LogLevel, customLabels []Label, message string, messa
 
 	// we add the name of the logger
 	var joinedLabels = []zap.Field{zap.String("logger", l.name)}
-	// and context variables - if exists
-	if len(zapGlobalLabels) > 0 {
-		joinedLabels = append(joinedLabels, zapGlobalLabels...)
+	// and global labels snapshot - if any
+	if snap := loadGlobalLabelsSnapshot(); snap != nil && len(snap.zapFields) > 0 {
+		joinedLabels = append(joinedLabels, snap.zapFields...)
 	}
 	joinedLabels = append(joinedLabels, toZapFieldArray(customLabels)...)
 
