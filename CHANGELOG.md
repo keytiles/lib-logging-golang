@@ -17,6 +17,8 @@ Fixes:
 - Handler construction returns errors instead of panicking via `zap.Must`; invalid handler `encoding` is rejected; config file read errors are returned
 - Global labels are thread-safe (`atomic.Value`); `GetGlobalLabels` / `SetGlobalLabels` copy on get/set
 - `GetHandlers` returns a shallow copy of the handlers map
+- Hot-path logging allocates less: nil empty labels, skip `Sprintf` with no args, pre-sized zap fields, simpler `LogEvent`, `GetLogger` read-lock on cache hit
+  - Rough ballpark from `BenchmarkLogging` (5 runs mean, same machine/config): ~10% less memory/op, ~9% fewer allocs/op, small time win (~1–2% ns/op). Absolute numbers depend on handlers/IO.
 
 Upgrades:
 - Golang 1.26.0 is used from now

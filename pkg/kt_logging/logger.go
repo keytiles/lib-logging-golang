@@ -26,10 +26,8 @@ func newLogger(name string, level LogLevel, handlers map[string]*zap.Logger) *Lo
 
 // returns a clone of the logger - after this the 2 instances are not connected anyhow
 func (l *Logger) clone() *Logger {
-	loggers_clone := map[string]*zap.Logger{}
-	for key, value := range l.handlers {
-		loggers_clone[key] = value
-	}
+	loggers_clone := make(map[string]*zap.Logger, len(l.handlers))
+	maps.Copy(loggers_clone, l.handlers)
 	return newLogger(l.name, l.level, loggers_clone)
 }
 
@@ -80,7 +78,7 @@ func (l *Logger) IsSilent() bool {
 	return l.level == NoneLevel || len(l.handlers) == 0
 }
 
-// internally used method to do the log
+// Internally used method to emit a log event after level / handler filtering.
 func (l *Logger) log(level LogLevel, customLabels []Label, message string, messageParams ...any) {
 
 	// filter for level and not having any handlers (output)
@@ -90,16 +88,24 @@ func (l *Logger) log(level LogLevel, customLabels []Label, message string, messa
 
 	// this event will be logged - so it makes sense to compile and put together everything!
 
-	// lets build the log string
-	msg := fmt.Sprintf(message, messageParams...)
+	// build message only when there are format args
+	msg := message
+	if len(messageParams) > 0 {
+		msg = fmt.Sprintf(message, messageParams...)
+	}
 
-	// we add the name of the logger
-	var joinedLabels = []zap.Field{zap.String("logger", l.name)}
-	// and global labels snapshot - if any
-	if snap := loadGlobalLabelsSnapshot(); snap != nil && len(snap.zapFields) > 0 {
+	// pre-size fields: logger name + globals + custom labels
+	globalLen := 0
+	snap := loadGlobalLabelsSnapshot()
+	if snap != nil {
+		globalLen = len(snap.zapFields)
+	}
+	joinedLabels := make([]zap.Field, 0, 1+globalLen+len(customLabels))
+	joinedLabels = append(joinedLabels, zap.String("logger", l.name))
+	if globalLen > 0 {
 		joinedLabels = append(joinedLabels, snap.zapFields...)
 	}
-	joinedLabels = append(joinedLabels, toZapFieldArray(customLabels)...)
+	joinedLabels = appendZapFields(joinedLabels, customLabels)
 
 	// now lets use all underlying Zap loggers and send the log event to each
 	for _, zapLogger := range l.handlers {
@@ -140,25 +146,25 @@ func (l *Logger) WithLabel(label Label) LogEvent {
 // logs the given message resolved with (optional) messageParams (Printf() style) on the given log level
 // in case the the message is filtered out due to configured log level then the message string is not built at all
 func (l *Logger) Log(level LogLevel, message string, messageParams ...any) {
-	l.log(level, []Label{}, message, messageParams...)
+	l.log(level, nil, message, messageParams...)
 }
 
 // Wrapper around .Log() function - firing a log event on Debug level
 func (l *Logger) Debug(message string, messageParams ...any) {
-	l.log(DebugLevel, []Label{}, message, messageParams...)
+	l.log(DebugLevel, nil, message, messageParams...)
 }
 
 // Wrapper around .Log() function - firing a log event on Info level
 func (l *Logger) Info(message string, messageParams ...any) {
-	l.log(InfoLevel, []Label{}, message, messageParams...)
+	l.log(InfoLevel, nil, message, messageParams...)
 }
 
 // Wrapper around .Log() function - firing a log event on Warning level
 func (l *Logger) Warn(message string, messageParams ...any) {
-	l.log(WarningLevel, []Label{}, message, messageParams...)
+	l.log(WarningLevel, nil, message, messageParams...)
 }
 
 // Wrapper around .Log() function - firing a log event on Error level
 func (l *Logger) Error(message string, messageParams ...any) {
-	l.log(ErrorLevel, []Label{}, message, messageParams...)
+	l.log(ErrorLevel, nil, message, messageParams...)
 }

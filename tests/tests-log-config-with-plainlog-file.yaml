@@ -1,0 +1,21 @@
+loggers:
+  root:
+    level: info
+    handlers:
+      - stdout_json
+      - file_plain
+
+# These are appenders config
+handlers:
+  # This handler logs to STDOUT in structured JSON format
+  stdout_json:
+    level: debug
+    encoding: json
+    outputPaths:
+      - stdout
+  # While this one is into a log file in Plain (console) format
+  file_plain:
+    level: debug
+    encoding: console
+    outputPaths:
+      - './my-plain-log-file.log'

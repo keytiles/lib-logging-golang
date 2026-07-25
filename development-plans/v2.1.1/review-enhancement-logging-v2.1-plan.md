@@ -213,5 +213,5 @@ Panic / hard-fail during config load is **acceptable** per panic policy.
 - [x] Review completed and findings written
 - [x] Phase 1 implemented
 - [x] Phase 2 implemented
-- [ ] Phase 3 implemented
-- [ ] Phase 4 (docs + benches) done — note: feature doc / CHANGELOG touched for Phases 1–2; full Phase 4 still open
+- [x] Phase 3 implemented
+- [ ] Phase 4 (docs + benches) done — note: feature doc / CHANGELOG touched for Phases 1–3; full Phase 4 still open

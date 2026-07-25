@@ -70,7 +70,7 @@ func (l Label) GetFloatValue() float64 {
 	return l.floatValue
 }
 
-// converts a Label into zap.Field struct
+// Converts a Label into a zap.Field.
 func (f Label) toZapField() zap.Field {
 	switch f._type {
 	case BoolType:
@@ -87,11 +87,18 @@ func (f Label) toZapField() zap.Field {
 	}
 }
 
-// converts a set of Labels into an equivalent set of zap.Fields
-func toZapFieldArray(fieldArray []Label) []zap.Field {
-	result := []zap.Field{}
+// Appends zap.Fields converted from labels onto dst (avoids an extra intermediate slice).
+func appendZapFields(dst []zap.Field, fieldArray []Label) []zap.Field {
 	for _, field := range fieldArray {
-		result = append(result, field.toZapField())
+		dst = append(dst, field.toZapField())
 	}
-	return result
+	return dst
+}
+
+// Converts Labels into an equivalent set of zap.Fields (pre-sized).
+func toZapFieldArray(fieldArray []Label) []zap.Field {
+	if len(fieldArray) == 0 {
+		return nil
+	}
+	return appendZapFields(make([]zap.Field, 0, len(fieldArray)), fieldArray)
 }

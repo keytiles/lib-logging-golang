@@ -95,6 +95,17 @@ func InitFromConfig(cfgPath string) error {
 // returns a Logger with the given name - if does not exist then a new instance is created with this name and registered
 // note: Loggers are hierarchical
 func GetLogger(loggerName string) *Logger {
+	// fast path: cache hit under read lock
+	loggersLock.RLock()
+	if loggers != nil {
+		if ctxLogger := loggers[loggerName]; ctxLogger != nil {
+			loggersLock.RUnlock()
+			return ctxLogger
+		}
+	}
+	loggersLock.RUnlock()
+
+	// slow path: create / lazy-init under write lock (double-checked inside getLogger)
 	loggersLock.Lock()
 	ctxLogger := getLogger(loggerName)
 	loggersLock.Unlock()

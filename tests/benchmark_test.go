@@ -1,6 +1,7 @@
 package kt_logging_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/keytiles/lib-logging-golang/v2/pkg/kt_logging"
@@ -8,7 +9,11 @@ import (
 
 func BenchmarkLogging(b *testing.B) {
 
-	kt_logging.InitFromConfig("../example/log-config.yaml")
+	// err := kt_logging.InitFromConfig("tests-log-config-stdoutjson-only.yaml")
+	err := kt_logging.InitFromConfig("tests-log-config-with-plainlog-file.yaml")
+	if err != nil {
+		panic(fmt.Sprintf("failed to load log config file: %s", err))
+	}
 
 	labels := []kt_logging.Label{kt_logging.StringLabel("key", "value")}
 
