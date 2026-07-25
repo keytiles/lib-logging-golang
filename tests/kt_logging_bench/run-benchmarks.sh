@@ -120,16 +120,17 @@ printf "%-28s  %12s  %10s  %12s  %s\n" "SCENARIO" "ns/op" "B/op" "allocs/op" "CO
 printf "%-28s  %12s  %10s  %12s  %s\n" "----------------------------" "------------" "----------" "------------" "-------------"
 
 # Fixed order matching benchmark_test.go — always print every scenario.
-SCENARIOS=(FileJson StdoutJson StdoutPlain FilePlain FileRollingJson)
+SCENARIOS=(FileJson StdoutJson StdoutJson_WithEachOp StdoutPlain FilePlain FileRollingJson)
 
 config_for() {
   case "$1" in
-    FileJson)        echo "testdata/bench-handler-file-json.yaml" ;;
-    StdoutJson)      echo "testdata/bench-handler-stdout-json.yaml" ;;
-    StdoutPlain)     echo "testdata/bench-handler-stdout-plain.yaml" ;;
-    FilePlain)       echo "testdata/bench-handler-file-plain.yaml" ;;
-    FileRollingJson) echo "testdata/bench-handler-file-rolling-json.yaml" ;;
-    *)               echo "?" ;;
+    FileJson)               echo "testdata/bench-handler-file-json.yaml" ;;
+    StdoutJson)             echo "testdata/bench-handler-stdout-json.yaml (cached logger)" ;;
+    StdoutJson_WithEachOp)  echo "testdata/bench-handler-stdout-json.yaml (With each op)" ;;
+    StdoutPlain)            echo "testdata/bench-handler-stdout-plain.yaml" ;;
+    FilePlain)              echo "testdata/bench-handler-file-plain.yaml" ;;
+    FileRollingJson)        echo "testdata/bench-handler-file-rolling-json.yaml" ;;
+    *)                      echo "?" ;;
   esac
 }
 

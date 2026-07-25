@@ -94,6 +94,10 @@ Two sections:
 
 # See also
 
-- [`docs/logging-v2.1.md`](docs/logging-v2.1.md) — how the package works (relations, hierarchy, APIs)
+- [`docs/logging-v2.1.md`](docs/logging-v2.1.md) — how the package works (relations, hierarchy, APIs, panic policy)
 - [`CHANGELOG.md`](CHANGELOG.md) — release history
 - [`example/`](example) — runnable example + sample config
+- Unit tests: `go test ./tests/kt_logging/`
+- Benchmarks: [`./tests/kt_logging_bench/run-benchmarks.sh`](tests/kt_logging_bench/run-benchmarks.sh) (separate from unit tests)
+
+Prefer **stable logger names** and cache `GetLogger` / `With` results for hot paths; put per-request data in labels, not in dynamic logger names (the registry keeps every unique name).

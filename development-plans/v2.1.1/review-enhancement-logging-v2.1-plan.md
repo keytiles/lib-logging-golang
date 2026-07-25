@@ -192,7 +192,7 @@ Panic / hard-fail during config load is **acceptable** per panic policy.
 ### Phase 4 — Docs + benches
 
 - Update [`docs/logging-v2.1.md`](../../docs/logging-v2.1.md) “What changed vs previous” when phases land (same unreleased plan / 2.1 line — grow in place)
-- Improve benchmarks (cached logger vs registry hit)
+- Improve benchmarks (cached logger vs registry hit; separate `tests/kt_logging_bench/` package + `run-benchmarks.sh`)
 - Document unbounded logger-registry guidance for consumers
 - Document panic policy: startup may fail hard; `GetLogger` / logging must not panic
 
@@ -214,4 +214,4 @@ Panic / hard-fail during config load is **acceptable** per panic policy.
 - [x] Phase 1 implemented
 - [x] Phase 2 implemented
 - [x] Phase 3 implemented
-- [ ] Phase 4 (docs + benches) done — note: feature doc / CHANGELOG touched for Phases 1–3; full Phase 4 still open
+- [x] Phase 4 (docs + benches) done

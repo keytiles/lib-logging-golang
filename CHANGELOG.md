@@ -18,7 +18,9 @@ Fixes:
 - Global labels are thread-safe (`atomic.Value`); `GetGlobalLabels` / `SetGlobalLabels` copy on get/set
 - `GetHandlers` returns a shallow copy of the handlers map
 - Hot-path logging allocates less: nil empty labels, skip `Sprintf` with no args, pre-sized zap fields, simpler `LogEvent`, `GetLogger` read-lock on cache hit
-  - Rough ballpark from `BenchmarkLogging` (5 runs mean, same machine/config): ~10% less memory/op, ~9% fewer allocs/op, small time win (~1–2% ns/op). Absolute numbers depend on handlers/IO.
+  - Rough ballpark (paired Phase 2 vs Phase 3 means on the same machine): ~10% less memory/op, ~9% fewer allocs/op, small time win (~1–2% ns/op). Absolute numbers depend on handlers/IO.
+- Docs: panic policy (startup may fail; runtime `GetLogger`/log must not panic); guidance to use stable logger names (registry grows unbounded with unique names)
+- Benchmarks moved to `tests/kt_logging_bench/` (summary: `./tests/kt_logging_bench/run-benchmarks.sh`); includes cached logger vs `With` each op
 
 Upgrades:
 - Golang 1.26.0 is used from now

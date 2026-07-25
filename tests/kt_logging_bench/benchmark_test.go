@@ -21,22 +21,39 @@ import (
 
 // JSON log file only (no console).
 func BenchmarkEmit_FileJson(b *testing.B) {
-	runEmitBenchmark(b, "bench-handler-file-json.yaml", false)
+	runEmitBenchmark(b, emitBenchOpts{cfgFile: "bench-handler-file-json.yaml"})
 }
 
 // Stdout JSON handler. Redirects os.Stdout → DevNull before init so the ns/op table stays readable.
+// Logger is cached once (typical app usage).
 func BenchmarkEmit_StdoutJson(b *testing.B) {
-	runEmitBenchmark(b, "bench-handler-stdout-json.yaml", true)
+	runEmitBenchmark(b, emitBenchOpts{
+		cfgFile:                  "bench-handler-stdout-json.yaml",
+		redirectStdoutToDevNull:  true,
+		resolveLoggerEachOp:      false,
+	})
+}
+
+// Same as StdoutJson but calls With("main") every iteration — registry lookup cost vs cached logger.
+func BenchmarkEmit_StdoutJson_WithEachOp(b *testing.B) {
+	runEmitBenchmark(b, emitBenchOpts{
+		cfgFile:                  "bench-handler-stdout-json.yaml",
+		redirectStdoutToDevNull:  true,
+		resolveLoggerEachOp:      true,
+	})
 }
 
 // Stdout plain (console encoding) handler. Same stdout redirect as StdoutJson.
 func BenchmarkEmit_StdoutPlain(b *testing.B) {
-	runEmitBenchmark(b, "bench-handler-stdout-plain.yaml", true)
+	runEmitBenchmark(b, emitBenchOpts{
+		cfgFile:                 "bench-handler-stdout-plain.yaml",
+		redirectStdoutToDevNull: true,
+	})
 }
 
 // Plain (console encoding) file only.
 func BenchmarkEmit_FilePlain(b *testing.B) {
-	runEmitBenchmark(b, "bench-handler-file-plain.yaml", false)
+	runEmitBenchmark(b, emitBenchOpts{cfgFile: "bench-handler-file-plain.yaml"})
 }
 
 // Rolling JSON file only. Skips on Windows (lumberjack limitation — see CHANGELOG).
@@ -44,21 +61,27 @@ func BenchmarkEmit_FileRollingJson(b *testing.B) {
 	if runtime.GOOS == "windows" {
 		b.Skip("rolling file handler is not reliable on Windows (see CHANGELOG)")
 	}
-	runEmitBenchmark(b, "bench-handler-file-rolling-json.yaml", false)
+	runEmitBenchmark(b, emitBenchOpts{cfgFile: "bench-handler-file-rolling-json.yaml"})
 }
 
-// Init from testdata/<cfgFile>, cache logger, emit labeled Info each iteration.
-func runEmitBenchmark(b *testing.B, cfgFile string, redirectStdoutToDevNull bool) {
+type emitBenchOpts struct {
+	cfgFile                 string
+	redirectStdoutToDevNull bool
+	resolveLoggerEachOp     bool // if true, With("main") every iteration instead of caching
+}
+
+// Init from testdata/<cfgFile>, emit labeled Info each iteration.
+func runEmitBenchmark(b *testing.B, opts emitBenchOpts) {
 	b.Helper()
 
-	if redirectStdoutToDevNull {
+	if opts.redirectStdoutToDevNull {
 		restore := redirectStdout(b)
 		defer restore()
 	}
 
 	// Configs use relative output paths — run with cwd = testdata so files land next to the YAMLs.
 	testdata := testdataDir(b)
-	cfgPath := filepath.Join(testdata, cfgFile)
+	cfgPath := filepath.Join(testdata, opts.cfgFile)
 
 	prevWd, err := os.Getwd()
 	if err != nil {
@@ -73,12 +96,16 @@ func runEmitBenchmark(b *testing.B, cfgFile string, redirectStdoutToDevNull bool
 		b.Fatalf("InitFromConfig(%s): %v", cfgPath, err)
 	}
 
-	logger := kt_logging.GetLogger("main")
 	labels := []kt_logging.Label{kt_logging.StringLabel("key", "value")}
+	cached := kt_logging.GetLogger("main")
 
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
+		logger := cached
+		if opts.resolveLoggerEachOp {
+			logger = kt_logging.With("main")
+		}
 		logger.
 			WithLabels(labels).
 			WithLabel(kt_logging.StringLabel("key2", "value2")).
