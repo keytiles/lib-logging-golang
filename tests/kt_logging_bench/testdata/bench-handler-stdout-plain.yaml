@@ -1,0 +1,18 @@
+# Stdout plain (console encoding) only.
+# BenchmarkEmit_StdoutPlain redirects os.Stdout to DevNull before Init so the results table stays readable.
+loggers:
+  root:
+    level: info
+    handlers:
+      - stdout_plain
+  main:
+    level: debug
+    handlers:
+      - stdout_plain
+
+handlers:
+  stdout_plain:
+    level: debug
+    encoding: console
+    outputPaths:
+      - stdout

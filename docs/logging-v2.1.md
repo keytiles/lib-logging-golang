@@ -68,6 +68,8 @@ Where to look when reading or changing this package:
   `StringLabel` / `IntLabel` / `FloatLabel` / `BoolLabel` and conversion to `zap.Field`
 - **Naming constant** — `pkg/kt_logging/common.go` (`PACKAGE_NAME`)
 - **Runnable example** — `example/usage_example.go` + `example/log-config.yaml`
+- **Unit tests** — `tests/kt_logging/`
+- **Benchmarks** — `tests/kt_logging_bench/` (summary script: `./tests/kt_logging_bench/run-benchmarks.sh`)
 - **Quick consumer overview** — `README.md`
 
 Import path:

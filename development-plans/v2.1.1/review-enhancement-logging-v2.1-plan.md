@@ -153,7 +153,7 @@ Panic / hard-fail during config load is **acceptable** per panic policy.
 
 #### M.8 — Benchmark measures registry + log together
 
-- **Where:** `tests/benchmark_test.go` calls `With("main")` every iteration
+- **Where:** `tests/kt_logging_bench/` (moved out of unit-test package; was earlier `tests/benchmark_test.go`)
 - **Problem:** Always hits the registry lock; understates / confuses pure emit cost.
 - **Recommended fix:** Cache `GetLogger` outside the loop for the hot-path bench; add a second bench for cached logger + labels.
 

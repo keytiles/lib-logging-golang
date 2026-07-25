@@ -1,0 +1,18 @@
+# Stdout JSON only.
+# BenchmarkEmit_StdoutJson redirects os.Stdout to DevNull before Init so the results table stays readable.
+loggers:
+  root:
+    level: info
+    handlers:
+      - stdout_json
+  main:
+    level: debug
+    handlers:
+      - stdout_json
+
+handlers:
+  stdout_json:
+    level: debug
+    encoding: json
+    outputPaths:
+      - stdout
