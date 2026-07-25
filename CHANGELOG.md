@@ -8,19 +8,10 @@ We will mark these with Git Tags
 
 ## release 2.1.1
 
-Fixes:
-- Applying new Keytiles lib standards
-  - Introducing constant `LIB_NAME`
-  - Based on the above introducing constants `PACKAGE_NAME` in all packages
-- Runtime panic safety for `GetLogger` / `With` (lazy default init and missing-root fallback no longer panic)
-- `InitFromConfig` now swaps the logger registry under lock (avoids race with concurrent getters)
-- Handler construction returns errors instead of panicking via `zap.Must`; invalid handler `encoding` is rejected; config file read errors are returned
-- Global labels are thread-safe (`atomic.Value`); `GetGlobalLabels` / `SetGlobalLabels` copy on get/set
-- `GetHandlers` returns a shallow copy of the handlers map
-- Hot-path logging allocates less: nil empty labels, skip `Sprintf` with no args, pre-sized zap fields, simpler `LogEvent`, `GetLogger` read-lock on cache hit
-  - Rough ballpark (paired Phase 2 vs Phase 3 means on the same machine): ~10% less memory/op, ~9% fewer allocs/op, small time win (~1–2% ns/op). Absolute numbers depend on handlers/IO.
-- Docs: panic policy (startup may fail; runtime `GetLogger`/log must not panic); guidance to use stable logger names (registry grows unbounded with unique names)
-- Benchmarks moved to `tests/kt_logging_bench/` (summary: `./tests/kt_logging_bench/run-benchmarks.sh`); includes cached logger vs `With` each op
+Fixes / improvements:
+- Keytiles lib standards: `LIB_NAME` and per-package `PACKAGE_NAME`
+- Review hardening of `kt_logging` (runtime panic safety, thread-safe global labels, safer encapsulation, hot-path allocation cuts, docs + benches) — details in [`development-plans/v2.1.1/review-enhancement-logging-v2.1-plan.md`](development-plans/v2.1.1/review-enhancement-logging-v2.1-plan.md)
+  - Hot-path emit: roughly ~10% less memory/op and ~9% fewer allocs/op in paired benches (small time win); exact numbers depend on handlers/IO
 
 Upgrades:
 - Golang 1.26.0 is used from now
