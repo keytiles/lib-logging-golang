@@ -1,0 +1,17 @@
+# Plain (console encoding) log file only — no stdout.
+loggers:
+  root:
+    level: info
+    handlers:
+      - file_plain
+  main:
+    level: debug
+    handlers:
+      - file_plain
+
+handlers:
+  file_plain:
+    level: debug
+    encoding: console
+    outputPaths:
+      - ./bench-out-plain.log

@@ -3,7 +3,7 @@ package kt_logging
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path"
 	"strings"
@@ -66,7 +66,10 @@ func parseFromJsonOrYaml(cfgPath string) (ConfigModel, error) {
 		return ConfigModel{}, fmt.Errorf("failed to open log config! error was: %v", openErr)
 	}
 	defer cfgFile.Close()
-	byteValue, _ := ioutil.ReadAll(cfgFile)
+	byteValue, readErr := io.ReadAll(cfgFile)
+	if readErr != nil {
+		return ConfigModel{}, fmt.Errorf("failed to read log config! error was: %v", readErr)
+	}
 
 	// lets (try to) parse into our config struct!
 	var config ConfigModel

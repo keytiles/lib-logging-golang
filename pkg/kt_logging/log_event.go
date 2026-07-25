@@ -1,60 +1,43 @@
 package kt_logging
 
 /*
-LogEvent structs just used internally - when user is adding extra labels to the log event.
-In that case an instance of this struct is created by the Logger and this struct is respponsible to collect up the extra labels
-until finally an .Info(), .Warn() etc call is made to close the log
+LogEvent is used when the caller adds extra labels before firing a log.
+An instance is created by Logger.WithLabel(s) and collects labels until
+Info/Warn/etc closes the event.
 */
 
 type LogEvent struct {
-	// we will do the log itself with this effective Logger
+	// Logger that will emit the event
 	logger *Logger
-	// a list of pointers - pointing to key-value pair arrays we are intending to attach to this log event if fired
-	customLabelList [][]Label
-	// and we also have a simple list of pointers - ppointing to key-value pair
+	// Labels attached to this event only (nil until first WithLabel / WithLabels)
 	customLabels []Label
 }
 
-// constructor - package private
-// note: as you can see we do not return pointer but allocated object on stack - this is on purpose!
-// since these objects are short lived much better allocate them on stack than on heap (which kicks in GC as well -> slower)
+// Creates a short-lived LogEvent value (stack-friendly; no heap slices until labels are added).
 func newLogEvent(withLogger *Logger) LogEvent {
-	instance := LogEvent{logger: withLogger}
-	// lets initialize with emppty arrays
-	instance.customLabelList = [][]Label{}
-	instance.customLabels = []Label{}
-
-	return instance
+	return LogEvent{logger: withLogger}
 }
 
+// Appends multiple labels to this event.
 func (le LogEvent) WithLabels(labels []Label) LogEvent {
-	le.customLabelList = append(le.customLabelList, labels)
+	le.customLabels = append(le.customLabels, labels...)
 	return le
 }
 
+// Appends a single label to this event.
 func (le LogEvent) WithLabel(label Label) LogEvent {
 	le.customLabels = append(le.customLabels, label)
 	return le
 }
 
-// making this event - actually makes the log itself
+// Emits the collected labels through the underlying Logger.
 func (le LogEvent) logWithLogger(level LogLevel, message string, messageParams ...any) {
 	if le.logger.isFilteredOut(level) || len(le.logger.handlers) == 0 {
-		// we skip this - as this log event will not happen for sure no point to make further efforts
+		// skip — no point assembling further work
 		return
 	}
 
-	// this event will be logged - so it makes sense to compile and put together everything!
-
-	var joinedLabels = []Label{}
-	// add the custom things
-	for _, customLabelsArr := range le.customLabelList {
-		joinedLabels = append(joinedLabels, customLabelsArr...)
-	}
-	joinedLabels = append(joinedLabels, le.customLabels...)
-
-	// finally, lets do the log!
-	le.logger.log(level, joinedLabels, message, messageParams...)
+	le.logger.log(level, le.customLabels, message, messageParams...)
 }
 
 // Fires a log event on Debug level

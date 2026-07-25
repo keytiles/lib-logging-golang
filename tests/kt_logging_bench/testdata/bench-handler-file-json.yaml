@@ -1,0 +1,17 @@
+# JSON log file only — no stdout (so go test -bench output stays readable).
+loggers:
+  root:
+    level: info
+    handlers:
+      - file_json
+  main:
+    level: debug
+    handlers:
+      - file_json
+
+handlers:
+  file_json:
+    level: debug
+    encoding: json
+    outputPaths:
+      - ./bench-out.jsonl

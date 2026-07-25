@@ -1,0 +1,21 @@
+# Rolling JSON log file only — no stdout.
+# Not reliable on Windows (lumberjack); the matching bench skips on windows.
+loggers:
+  root:
+    level: info
+    handlers:
+      - rolling_json_file
+  main:
+    level: debug
+    handlers:
+      - rolling_json_file
+
+handlers:
+  rolling_json_file:
+    level: debug
+    encoding: json
+    rollingFile:
+      file: ./bench-out-rolling.jsonl
+      maxSizeMb: 100
+      maxAgeDays: 1
+      compress: false
