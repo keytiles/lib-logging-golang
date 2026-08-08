@@ -6,6 +6,14 @@ We will mark these with Git Tags
 
 # Changes in releases
 
+## release 2.2.0
+
+Fixes / improvements:
+- Nil `*Logger` (and `LogEvent` backed by a nil logger) no longer panics — methods are no-ops / silent defaults (`IsSilent() == true`). Closes remaining L.2 from the v2.1 review plan.
+
+New features:
+- Bounded on-demand logger registry (FIFO by creation order): config loggers stay pinned; extra names from `GetLogger` / `With` are cached up to `loggerMaxCacheSize` (default 3000). See [`development-plans/v2.2.0/enhance-LoggerRegistryInMemory-v2.2-plan.md`](development-plans/v2.2.0/enhance-LoggerRegistryInMemory-v2.2-plan.md)
+
 ## release 2.1.1
 
 Fixes / improvements:

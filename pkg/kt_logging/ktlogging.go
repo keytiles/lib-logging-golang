@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -23,9 +24,27 @@ const (
 
 	_ROOT_NAME            string = "root"
 	_DEFAULT_HANDLER_NAME string = "stdout_json"
+
+	// DefaultLoggerMaxCacheSize is used when loggerMaxCacheSize is omitted or 0 in config.
+	// It limits how many on-demand (non-config) logger names stay cached in memory.
+	DefaultLoggerMaxCacheSize = 3000
 )
 
+type loggerCacheItem struct {
+	logger       *Logger
+	creationTime time.Time
+}
+
 var loggers map[string]*Logger
+
+// Contains the names of the requested loggers in creation order - excluding those ones which were created by the config statically.
+// Index 0 = oldest.
+// When we reach loggerCacheMax we simply take the item 0 (must be evicted from loggers map) then shift the array and append new one to the end.
+// Config / init loggers are never added here, so they are never evicted.
+var loggersCreationOrder []string
+
+// Max number of on-demand (non-config) loggers kept in the registry.
+var loggerCacheMax = DefaultLoggerMaxCacheSize
 
 // we need locks to avoid concurrent map operations
 var loggersLock = new(sync.RWMutex)
@@ -71,10 +90,56 @@ func loadGlobalLabelsSnapshot() *globalLabelsSnapshot {
 	return v.(*globalLabelsSnapshot)
 }
 
+// Resolves loggerMaxCacheSize from config: 0 → default; negative → error.
+func resolveLoggerMaxCacheSize(configured int) (int, error) {
+	if configured < 0 {
+		return 0, fmt.Errorf("loggerMaxCacheSize must be >= 0 (0 means default %d)", DefaultLoggerMaxCacheSize)
+	}
+	if configured == 0 {
+		return DefaultLoggerMaxCacheSize, nil
+	}
+	return configured, nil
+}
+
+// Replaces the in-memory registry. Caller must hold loggersLock.
+// Configured names stay in loggers only (not in loggersCreationOrder); on-demand creation-order cache is cleared.
+func resetRegistry(configured map[string]*Logger, cacheMax int) {
+	loggers = configured
+
+	// allocate enough size for the ordered names - but make it empty
+	loggersCreationOrder = make([]string, 0, cacheMax)
+
+	loggerCacheMax = cacheMax
+}
+
+// Registers name as a new on-demand cache entry, evicting the oldest (FIFO) if at capacity.
+// Caller must hold loggersLock. Name must already be present in loggers.
+// Only on-demand names belong here — config loggers are installed via resetRegistry and never registered.
+func registerOnDemand(name string) {
+	// already tracked — cache hit does not reorder (FIFO by creation)
+	for _, existing := range loggersCreationOrder {
+		if existing == name {
+			return
+		}
+	}
+	if len(loggersCreationOrder) >= loggerCacheMax {
+		evictName := loggersCreationOrder[0]
+		delete(loggers, evictName)
+		loggersCreationOrder = append(loggersCreationOrder[1:], name)
+		return
+	}
+	loggersCreationOrder = append(loggersCreationOrder, name)
+}
+
 // Initializing the logging from the .yaml or .json config file available on the given path
 func InitFromConfig(cfgPath string) error {
 	// read the config file
 	configModel, err := parseFromJsonOrYaml(cfgPath)
+	if err != nil {
+		return err
+	}
+
+	cacheMax, err := resolveLoggerMaxCacheSize(configModel.LoggerMaxCacheSize)
 	if err != nil {
 		return err
 	}
@@ -86,7 +151,7 @@ func InitFromConfig(cfgPath string) error {
 
 	// swap registry under lock so concurrent GetLogger cannot race
 	loggersLock.Lock()
-	loggers = configuredLoggers
+	resetRegistry(configuredLoggers, cacheMax)
 	loggersLock.Unlock()
 
 	return nil
@@ -124,11 +189,11 @@ func getLogger(loggerName string) *Logger {
 		// Prefer normal default config; on failure install a hard-coded stdout JSON root (no panic).
 		configured, err := initLoggersFromConfig(getDefaultLoggerConfig())
 		if err == nil {
-			loggers = configured
+			resetRegistry(configured, DefaultLoggerMaxCacheSize)
 		} else {
-			loggers = map[string]*Logger{
+			resetRegistry(map[string]*Logger{
 				_ROOT_NAME: newHardFallbackRootLogger(),
-			}
+			}, DefaultLoggerMaxCacheSize)
 		}
 	}
 	ctxLogger := loggers[loggerName]
@@ -148,8 +213,9 @@ func getLogger(loggerName string) *Logger {
 		loggerCopy := parentLogger.clone()
 		// let's rename the clone
 		loggerCopy.name = loggerName
-		// register the clone
+		// register the clone as on-demand (may evict oldest extras)
 		loggers[loggerName] = loggerCopy
+		registerOnDemand(loggerName)
 		ctxLogger = loggerCopy
 	}
 	return ctxLogger
@@ -164,8 +230,12 @@ func getRootLogger() *Logger {
 	if loggers == nil {
 		loggers = make(map[string]*Logger)
 	}
+	if loggersCreationOrder == nil {
+		loggersCreationOrder = make([]string, 0, loggerCacheMax)
+	}
 	root := newHardFallbackRootLogger()
 	loggers[_ROOT_NAME] = root
+	// root from fallback is config-equivalent: not added to loggersCreationOrder
 	return root
 }
 
@@ -327,4 +397,29 @@ func initLoggersFromConfig(config ConfigModel) (map[string]*Logger, error) {
 	}
 
 	return result, nil
+}
+
+// VisibleForTesting_OnDemandCacheSize returns how many on-demand logger names are currently cached.
+func VisibleForTesting_OnDemandCacheSize() int {
+	loggersLock.RLock()
+	defer loggersLock.RUnlock()
+	return len(loggersCreationOrder)
+}
+
+// VisibleForTesting_IsRegistered reports whether name is currently in the logger registry.
+func VisibleForTesting_IsRegistered(name string) bool {
+	loggersLock.RLock()
+	defer loggersLock.RUnlock()
+	if loggers == nil {
+		return false
+	}
+	_, ok := loggers[name]
+	return ok
+}
+
+// VisibleForTesting_LoggerCacheMax returns the active on-demand cache max.
+func VisibleForTesting_LoggerCacheMax() int {
+	loggersLock.RLock()
+	defer loggersLock.RUnlock()
+	return loggerCacheMax
 }
