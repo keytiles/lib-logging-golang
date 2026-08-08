@@ -1,3 +1,9 @@
+# loggerMaxCacheSize: max cached loggers for names NOT listed under loggers:.
+# Config loggers are always kept. Over the limit, oldest non-config names
+# (creation order / FIFO) are dropped from the cache (recreated on next GetLogger if needed).
+# Omit or 0 = default 3000.
+loggerMaxCacheSize: 3000
+
 loggers:
   root:
     level: info

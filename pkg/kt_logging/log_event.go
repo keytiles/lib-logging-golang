@@ -31,7 +31,11 @@ func (le LogEvent) WithLabel(label Label) LogEvent {
 }
 
 // Emits the collected labels through the underlying Logger.
+// A nil underlying logger is a no-op (same contract as nil *Logger methods).
 func (le LogEvent) logWithLogger(level LogLevel, message string, messageParams ...any) {
+	if le.logger == nil {
+		return
+	}
 	if le.logger.isFilteredOut(level) || len(le.logger.handlers) == 0 {
 		// skip — no point assembling further work
 		return

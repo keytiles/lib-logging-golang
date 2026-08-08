@@ -79,6 +79,10 @@ func envOr(key, fallback string) string {
 
 We use a **Python-style** log config (simple and effective). See [`example/log-config.yaml`](example/log-config.yaml).
 
+Optional top-level:
+
+- **`loggerMaxCacheSize`** — max cached loggers for names **not** listed under `loggers:`. Config loggers are always kept. Over the limit, oldest non-config names (creation order / FIFO) are dropped from the cache (recreated on next `GetLogger` if needed). Omit or `0` = default **3000**.
+
 Two sections:
 
 - **loggers** — map of named Logger instances (map key = name). Each has:
@@ -94,10 +98,10 @@ Two sections:
 
 # See also
 
-- [`docs/logging-v2.1.md`](docs/logging-v2.1.md) — how the package works (relations, hierarchy, APIs, panic policy)
+- [`docs/logging-v2.2.md`](docs/logging-v2.2.md) — how the package works (relations, hierarchy, APIs, panic policy, on-demand cache)
 - [`CHANGELOG.md`](CHANGELOG.md) — release history
 - [`example/`](example) — runnable example + sample config
 - Unit tests: `go test ./tests/kt_logging/`
 - Benchmarks: [`./tests/kt_logging_bench/run-benchmarks.sh`](tests/kt_logging_bench/run-benchmarks.sh) (separate from unit tests)
 
-Prefer **stable logger names** and cache `GetLogger` / `With` results for hot paths; put per-request data in labels, not in dynamic logger names (the registry keeps every unique name).
+Prefer **stable logger names** and cache `GetLogger` / `With` results for hot paths; put per-request data in labels, not in dynamic logger names. Non-config names are FIFO-cached (creation order) up to `loggerMaxCacheSize`.

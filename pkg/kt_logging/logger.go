@@ -1,7 +1,8 @@
 // This file defines the Logger struct along with its methods
 //
 // Loggers are named (created from the config json/yaml and returned by ktlogging.with(loggerName)) objects
-// with a specific level assigned to them - writing log events into a set of named and configured outputs
+// with a specific level assigned to them - writing log events into a set of named and configured outputs.
+// All exported *Logger methods are nil-safe: a nil receiver is a silent no-op (IsSilent() == true).
 
 package kt_logging
 
@@ -26,6 +27,9 @@ func newLogger(name string, level LogLevel, handlers map[string]*zap.Logger) *Lo
 
 // returns a clone of the logger - after this the 2 instances are not connected anyhow
 func (l *Logger) clone() *Logger {
+	if l == nil {
+		return nil
+	}
 	loggers_clone := make(map[string]*zap.Logger, len(l.handlers))
 	maps.Copy(loggers_clone, l.handlers)
 	return newLogger(l.name, l.level, loggers_clone)
@@ -33,53 +37,68 @@ func (l *Logger) clone() *Logger {
 
 // returns the name of the Logger - this can not change after instantiation
 func (l *Logger) GetName() string {
+	if l == nil {
+		return ""
+	}
 	return l.name
 }
 
 // returns the level
 func (l *Logger) GetLevel() LogLevel {
+	if l == nil {
+		return NoneLevel
+	}
 	return l.level
 }
 
 // Returns a shallow copy of the attached handlers map so callers cannot mutate the logger's internal map.
 func (l *Logger) GetHandlers() map[string]*zap.Logger {
+	if l == nil {
+		return nil
+	}
 	handlersCopy := make(map[string]*zap.Logger, len(l.handlers))
 	maps.Copy(handlersCopy, l.handlers)
 	return handlersCopy
 }
 
 func (l *Logger) isFilteredOut(level LogLevel) bool {
+	if l == nil {
+		return true
+	}
 	return l.level < level
 }
 
 // returns TRUE if Logger would output Error level logs due to its current configuration - FALSE otherwise
 func (l *Logger) IsErrorEnabled() bool {
-	return l.level >= ErrorLevel && len(l.handlers) > 0
+	return l != nil && l.level >= ErrorLevel && len(l.handlers) > 0
 }
 
 // returns TRUE if Logger would output Warning level logs due to its current configuration - FALSE otherwise
 func (l *Logger) IsWarningEnabled() bool {
-	return l.level >= WarningLevel && len(l.handlers) > 0
+	return l != nil && l.level >= WarningLevel && len(l.handlers) > 0
 }
 
 // returns TRUE if Logger would output Info level logs due to its current configuration - FALSE otherwise
 func (l *Logger) IsInfoEnabled() bool {
-	return l.level >= InfoLevel && len(l.handlers) > 0
+	return l != nil && l.level >= InfoLevel && len(l.handlers) > 0
 }
 
 // returns TRUE if Logger would output Debug level logs due to its current configuration - FALSE otherwise
 func (l *Logger) IsDebugEnabled() bool {
-	return l.level >= DebugLevel && len(l.handlers) > 0
+	return l != nil && l.level >= DebugLevel && len(l.handlers) > 0
 }
 
 // Returns TRUE if Logger would not output anything due to its current configuration. This is either because  it's log level is None or does not have any
 // (output) handlers at the moment
 func (l *Logger) IsSilent() bool {
-	return l.level == NoneLevel || len(l.handlers) == 0
+	return l == nil || l.level == NoneLevel || len(l.handlers) == 0
 }
 
 // Internally used method to emit a log event after level / handler filtering.
 func (l *Logger) log(level LogLevel, customLabels []Label, message string, messageParams ...any) {
+	if l == nil {
+		return
+	}
 
 	// filter for level and not having any handlers (output)
 	if l.isFilteredOut(level) || len(l.handlers) == 0 {

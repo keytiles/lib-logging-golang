@@ -53,8 +53,11 @@ type HandlerConfigModel struct {
 
 // for json/yaml config file parsing - this is root level object
 type ConfigModel struct {
-	Loggers  map[string]LoggerConfigModel  `json:"loggers" yaml:"loggers"`
-	Handlers map[string]HandlerConfigModel `json:"handlers" yaml:"handlers"`
+	// LoggerMaxCacheSize caps how many on-demand (non-config) logger names are kept in memory.
+	// Config loggers are always kept. 0 or omitted means the library default (see DefaultLoggerMaxCacheSize).
+	LoggerMaxCacheSize int                           `json:"loggerMaxCacheSize" yaml:"loggerMaxCacheSize"`
+	Loggers            map[string]LoggerConfigModel  `json:"loggers" yaml:"loggers"`
+	Handlers           map[string]HandlerConfigModel `json:"handlers" yaml:"handlers"`
 }
 
 // parsing the ConfigModel from the given file path - which must be either JSON or Yaml file
